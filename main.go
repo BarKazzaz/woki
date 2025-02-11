@@ -43,7 +43,7 @@ func parse(requestBody []byte, conn net.Conn) {
 			conn.Write([]byte("Error:" + err.Error() + "\n"))
 		}
 	case 'J':
-		fmt.Printf("Trying to join " + name + " to room: " + arg)
+		fmt.Printf("Trying to join " + name + " to room: " + arg + "\n")
 		conn.Write([]byte("Joining room " + arg + "\n"))
 		err := theChat.JoinRoom(arg, user)
 		if err != nil {

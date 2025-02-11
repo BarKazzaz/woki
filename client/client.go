@@ -15,7 +15,7 @@ func main() {
 		panic(err)
 	}
 	connection.Write([]byte("3barCyoyo\n"))
-	buffer := make([]byte, 4094)
+	buffer := make([]byte, 4096)
 	n, err := connection.Read(buffer)
 	if err != nil {
 		panic(err)
@@ -23,12 +23,11 @@ func main() {
 	fmt.Printf("Read %d bytes\nMessage: %v\n", n, string(buffer[:n]))
 
 	connection.Write([]byte("3barJyoyo\n"))
-	buffer = make([]byte, 4094)
+	buffer = make([]byte, 4096)
 	n, err = connection.Read(buffer)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Printf("Read %d bytes\nMessage: %v\n", n, string(buffer[:n]))
-	connection.Write([]byte("4done\n"))
-	connection.Close()
+	defer connection.Close()
 }
