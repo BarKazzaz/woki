@@ -3,6 +3,7 @@ package chat
 import (
 	"errors"
 	"net"
+	"strconv"
 	"strings"
 )
 
@@ -44,18 +45,25 @@ func (chat Chat) CreateRoom(roomName string) error {
 func (chat Chat) JoinRoom(roomName string, user User) error {
 	room, exists := chat.Rooms[roomName]
 	if !exists {
-		return errors.New("Room " + roomName + " doesn't exist")
+		rooms := make([]string, len(chat.Rooms))
+		i := 0
+		for r := range chat.Rooms {
+			rooms[i] = r
+			i++
+		}
+		msg := "Room " + roomName + " does not exist\nRooms: " + strings.Join(rooms, ",") + "(" + strconv.Itoa(len(chat.Rooms)) + ")\n"
+		return errors.New(msg)
 	}
 	room.Join(user)
 	return nil
 }
 
-func (chat Chat) SendMessage(roomNameAndMessage []byte) error {
+func (chat Chat) SendMessage(roomNameAndMessage string) error {
 	roomNameAndMessageS := string(roomNameAndMessage)
 	for roomName := range chat.Rooms {
 		if strings.HasPrefix(roomNameAndMessageS, roomName) {
 			msg := roomNameAndMessage[len(roomName):]
-			chat.sendMessage(roomName, msg)
+			chat.sendMessage(roomName, []byte(msg))
 		}
 	}
 	return nil
@@ -64,7 +72,7 @@ func (chat Chat) SendMessage(roomNameAndMessage []byte) error {
 func (chat Chat) sendMessage(roomName string, message []byte) error {
 	room, exists := chat.Rooms[roomName]
 	if !exists {
-		return errors.New("Room " + roomName + " doesn't exist")
+		return errors.New("Room " + roomName + " does not exist")
 	}
 	i := 0
 	for i < len(room.Chatters) {

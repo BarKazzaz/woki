@@ -4,19 +4,32 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strconv"
 	"woki/chat"
 )
 
 var theChat = chat.Chat{}
 
 func parse(requestBody []byte, conn net.Conn) {
-	// TODO: support names > 9 ([0] means only 1 char)
-	nameLength := int(requestBody[0]) - int(byte('0')) + 1
+	// TODO: support names > 9 ([0] means only 1 char unless we go the hexa way of numbering)
+	var nameLength int = int(requestBody[0] - byte('0'))
+	if nameLength < 3 {
+		return
+	}
+	var nameLastIndex int = nameLength + 1
 
-	name := requestBody[1:nameLength]
-	command := requestBody[nameLength] // Create | Join | Message
-	arg := requestBody[nameLength+1:]  // roomName | message
-	fmt.Printf("%v name %v, command %v arg %v", string(nameLength), string(name), string(command), string(arg))
+	name := string(requestBody[1:nameLastIndex])
+	command := requestBody[nameLastIndex] // Create | Join | Message
+	trailingNewLineIndex := 0
+	for trailingNewLineIndex < len(requestBody) {
+		if requestBody[trailingNewLineIndex] == '\n' {
+			break
+		}
+		trailingNewLineIndex++
+	}
+
+	arg := string(requestBody[nameLastIndex+1 : trailingNewLineIndex]) // roomName | message
+	fmt.Printf("%v name: %v command: %v arg: %v\n", strconv.Itoa(nameLength), name, string(command), arg)
 
 	user := chat.User{}
 	user.Name = string(name)
@@ -24,17 +37,25 @@ func parse(requestBody []byte, conn net.Conn) {
 
 	switch command {
 	case 'C':
-		room := string(arg)
-		conn.Write([]byte("Creating room " + room))
-		theChat.CreateRoom(room)
+		conn.Write([]byte("Creating room " + arg + "\n"))
+		err := theChat.CreateRoom(arg)
+		if err != nil {
+			conn.Write([]byte("Error:" + err.Error() + "\n"))
+		}
 	case 'J':
-		room := string(arg)
-		conn.Write([]byte("Joining room " + room))
-		theChat.JoinRoom(room, user)
+		fmt.Printf("Trying to join " + name + " to room: " + arg)
+		conn.Write([]byte("Joining room " + arg + "\n"))
+		err := theChat.JoinRoom(arg, user)
+		if err != nil {
+			conn.Write([]byte("Error:" + err.Error() + "\n"))
+		}
 	case 'M':
-		theChat.SendMessage(arg)
+		err := theChat.SendMessage(arg)
+		if err != nil {
+			conn.Write([]byte("Error:" + err.Error() + "\n"))
+		}
 	default:
-		conn.Write([]byte("Unknown command:" + string(command)))
+		conn.Write([]byte("Unknown command:" + string(command) + "\n"))
 	}
 }
 
@@ -43,9 +64,9 @@ func hey(c net.Conn) {
 }
 
 func handleConnetion(connection net.Conn) {
-	buff := make([]byte, 4096)
 	defer connection.Close()
 	for {
+		buff := make([]byte, 4096)
 		i, err := connection.Read(buff)
 		if err != nil {
 			if err != io.EOF {
