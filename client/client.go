@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
+	"time"
 )
 
 func main() {
@@ -16,18 +18,32 @@ func main() {
 	}
 	connection.Write([]byte("3barCyoyo\n"))
 	buffer := make([]byte, 4096)
-	n, err := connection.Read(buffer)
-	if err != nil {
-		panic(err)
+	n, readErr := connection.Read(buffer)
+	if readErr != nil {
+		panic(readErr)
 	}
 	fmt.Printf("Read %d bytes\nMessage: %v\n", n, string(buffer[:n]))
 
 	connection.Write([]byte("3barJyoyo\n"))
-	buffer = make([]byte, 4096)
-	n, err = connection.Read(buffer)
-	if err != nil {
-		panic(err)
+	connection.Write([]byte(io.EOF.Error()))
+	for {
+		buffer = make([]byte, 4096)
+		n, readErr = connection.Read(buffer)
+		timeoutTime := time.Now().Add(time.Second * 5)
+		if err := connection.SetReadDeadline(timeoutTime); err != nil {
+			fmt.Printf("Timeout")
+			break
+		}
+		if readErr != nil {
+			if netErr, ok := readErr.(net.Error); ok && netErr.Timeout() {
+				fmt.Printf("Timeout\n")
+				break
+			} else {
+				panic(readErr)
+			}
+		}
+		msg := string(buffer[:n])
+		fmt.Printf("Read %d bytes\nMessage: %v\n", n, msg)
 	}
-	fmt.Printf("Read %d bytes\nMessage: %v\n", n, string(buffer[:n]))
 	defer connection.Close()
 }
