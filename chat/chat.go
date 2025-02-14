@@ -2,81 +2,96 @@ package chat
 
 import (
 	"errors"
-	"net"
+	"fmt"
 	"strconv"
 	"strings"
+	"woki/user"
 )
 
-type User struct {
-	Name       string
-	Connection net.Conn
-}
-
 type ChatRoom struct {
-	Chatters []User
+	Chatters []*user.User
 }
 
 func NewChatRoom() ChatRoom {
 	c := ChatRoom{
-		make([]User, 2),
+		make([]*user.User, 2),
 	}
 	return c
 }
 
-func (room ChatRoom) Join(user User) {
-	room.Chatters = append(room.Chatters, user)
+func (room ChatRoom) Join(user user.User) {
+	room.Chatters = append(room.Chatters, &user)
 }
 
 type Chat struct {
-	Rooms map[string]ChatRoom
+	Rooms map[string]*ChatRoom
 }
 
-func (chat Chat) CreateRoom(roomName string) error {
+func (chat *Chat) HasRoom(roomName string) bool {
+	_, roomExists := chat.Rooms[roomName]
+	return roomExists
+}
+
+func (chat *Chat) CreateRoom(roomName string) error {
 	if chat.Rooms == nil {
-		chat.Rooms = make(map[string]ChatRoom, 5)
+		fmt.Printf("first room creation in progress..\n")
+		chat.Rooms = make(map[string]*ChatRoom, 5)
 	}
 	if _, exists := chat.Rooms[roomName]; exists {
-		return errors.New("Name already in use")
+		return errors.New("Name already in use\n")
 	}
-	chat.Rooms[roomName] = NewChatRoom()
+	room := NewChatRoom()
+	chat.Rooms[roomName] = &room
+	fmt.Printf("Rooms are: %v\n", chat.GetRoomsList())
 	return nil
 }
 
-func (chat Chat) JoinRoom(roomName string, user User) error {
+func (chat Chat) GetRoomsList() []string {
+	rooms := make([]string, len(chat.Rooms))
+	i := 0
+	for r := range chat.Rooms {
+		rooms[i] = r
+		i++
+	}
+	return rooms
+}
+
+func (chat *Chat) JoinRoom(roomName string, user user.User) error {
 	room, exists := chat.Rooms[roomName]
 	if !exists {
-		rooms := make([]string, len(chat.Rooms))
-		i := 0
-		for r := range chat.Rooms {
-			rooms[i] = r
-			i++
-		}
-		msg := "Room " + roomName + " does not exist\nRooms: " + strings.Join(rooms, ",") + "(" + strconv.Itoa(len(chat.Rooms)) + ")\n"
+		rooms := chat.GetRoomsList()
+		msg := "Room " + roomName + " does not exist\n"
+		msg += "Rooms: " + strings.Join(rooms, ",") + "("
+		msg += strconv.Itoa(len(chat.Rooms)) + ")\n"
 		return errors.New(msg)
 	}
 	room.Join(user)
 	return nil
 }
 
-func (chat Chat) SendMessage(roomNameAndMessage string) error {
+func (chat *Chat) SendMessage(user user.User, roomNameAndMessage string) error {
 	roomNameAndMessageS := string(roomNameAndMessage)
 	for roomName := range chat.Rooms {
 		if strings.HasPrefix(roomNameAndMessageS, roomName) {
 			msg := roomNameAndMessage[len(roomName):]
-			chat.sendMessage(roomName, []byte(msg))
+			chat.sendMessage(user, roomName, []byte(msg))
 		}
 	}
 	return nil
 }
 
-func (chat Chat) sendMessage(roomName string, message []byte) error {
+func (chat *Chat) sendMessage(user user.User, roomName string, message []byte) error {
 	room, exists := chat.Rooms[roomName]
 	if !exists {
 		return errors.New("Room " + roomName + " does not exist")
 	}
 	i := 0
 	for i < len(room.Chatters) {
-		room.Chatters[i].Connection.Write(message)
+		chatter := room.Chatters[i]
+		if chatter.Name == user.Name {
+			continue
+		}
+		chatter.Connection.Write(message)
 		i++
 	}
 	return nil

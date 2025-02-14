@@ -5,12 +5,30 @@ import (
 	"io"
 	"net"
 	"strconv"
+	"strings"
 	"woki/chat"
+	"woki/user"
 )
 
 var theChat = chat.Chat{}
 
 func parse(requestBody []byte, conn net.Conn) {
+	trailingNewLineIndex := 0
+	for trailingNewLineIndex < len(requestBody) {
+		if requestBody[trailingNewLineIndex] == '\n' {
+			break
+		}
+		trailingNewLineIndex++
+	}
+	line := string(requestBody[:trailingNewLineIndex])
+	fmt.Printf("line: %v (%v)\n", line, len(line))
+	if line == "getRooms" {
+		rooms := theChat.GetRoomsList()
+		fmt.Printf("getRooms: %v\n", rooms)
+		s := "[" + strings.Join(rooms, ",") + "]\n"
+		conn.Write([]byte(s))
+		return
+	}
 	// TODO: support names > 9 ([0] means only 1 char unless we go the hexa way of numbering)
 	var nameLength int = int(requestBody[0] - byte('0'))
 	if nameLength < 3 {
@@ -20,18 +38,11 @@ func parse(requestBody []byte, conn net.Conn) {
 
 	name := string(requestBody[1:nameLastIndex])
 	command := requestBody[nameLastIndex] // Create | Join | Message
-	trailingNewLineIndex := 0
-	for trailingNewLineIndex < len(requestBody) {
-		if requestBody[trailingNewLineIndex] == '\n' {
-			break
-		}
-		trailingNewLineIndex++
-	}
 
 	arg := string(requestBody[nameLastIndex+1 : trailingNewLineIndex]) // roomName | message
 	fmt.Printf("%v name: %v command: %v arg: %v\n", strconv.Itoa(nameLength), name, string(command), arg)
 
-	user := chat.User{}
+	user := user.User{}
 	user.Name = string(name)
 	user.Connection = conn
 
@@ -50,17 +61,13 @@ func parse(requestBody []byte, conn net.Conn) {
 			conn.Write([]byte("Error:" + err.Error() + "\n"))
 		}
 	case 'M':
-		err := theChat.SendMessage(arg)
+		err := theChat.SendMessage(user, arg)
 		if err != nil {
 			conn.Write([]byte("Error:" + err.Error() + "\n"))
 		}
 	default:
 		conn.Write([]byte("Unknown command:" + string(command) + "\n"))
 	}
-}
-
-func hey(c net.Conn) {
-	c.Write([]byte("Hey"))
 }
 
 func handleConnetion(connection net.Conn) {
@@ -87,6 +94,10 @@ func main() {
 	}
 	defer listener.Close()
 	fmt.Println("Serving", listener.Addr().Network(), listener.Addr().String())
+	mainRoomName := "Main Lobby"
+	if !theChat.HasRoom(mainRoomName) {
+		theChat.CreateRoom(mainRoomName)
+	}
 	for {
 		connection, err := listener.Accept()
 		if err != nil {
