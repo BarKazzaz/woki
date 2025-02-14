@@ -11,83 +11,124 @@ import (
 )
 
 var theUser = user.User{}
+var currentRoom string
 
-func handleCommand(cmd string) {
-	command := strings.Split(cmd, " ")
-	rest := strings.Join(command[1:], " ")
-	fmt.Printf("command: %v, rest: %v\n", command[0], rest)
-	switch command[0] {
+func handleCommands(cmd string) {
+	insideARoom := currentRoom != ""
+	split := strings.Split(cmd, " ")
+	var command, rest string
+	if insideARoom {
+		if strings.HasPrefix(cmd, "\\cmd ") {
+			if len(split) < 2 {
+				fmt.Printf("Invalid input: %v", cmd)
+				return
+			}
+			command = split[1]
+			rest = strings.Join(split[2:], " ")
+		} else {
+			command = "message"
+			rest = cmd
+		}
+		handleInRoomCommands(command, rest)
+		return
+	}
+	command = split[0]
+	rest = strings.Join(split[1:], " ")
+	handleOutOfRoomCommands(split[0], rest)
+}
+
+func handleOutOfRoomCommands(command, rest string) {
+	fmt.Printf("command: %v, rest: %v\n", command, rest)
+	switch command {
 	case "list":
 		theUser.SendListRooms()
 	case "join":
-		theUser.SendJoin(rest)
+		currentRoom = rest
+		theUser.SendJoin(currentRoom)
 	case "create":
 		theUser.SendCreateRoom(rest)
 	}
 }
 
-func connect() {
-	address, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
-	if err != nil {
-		panic(err)
-	}
-	connection, err := net.DialTCP("tcp", nil, address)
-	theUser.Connection = connection
-	if err != nil {
-		panic(err)
+func handleInRoomCommands(command, rest string) {
+	fmt.Printf("command: %v, rest: %v\n", command, rest)
+	switch command {
+	case "list":
+		fmt.Printf("asking for list of users...\n")
+		theUser.SendListUsers(currentRoom)
+	case "change":
+		theUser.SendJoin(rest)
+	case "message":
+		theUser.SendMessage(currentRoom, rest)
 	}
 }
 
-func setUserName() {
-	fmt.Printf("What is your name?\n")
-	var userName string
-	_, err := fmt.Scan(&userName)
-	if err != nil {
-		fmt.Printf("Error getting name: %v", err.Error())
-		panic(err)
+func showOutOfRoomCommands() {
+	fmt.Printf("Commands: list/create/join\ne.g. join Main Loby\nOR\ncreate Led Zepplin Fans\n")
+}
+
+func showInRoomCommands() {
+	msg := "Type to send messages\n"
+	msg += "Commands:					change,list\n"
+	msg += "Hello							(to send 'Hello' to other chatters)\n"
+	msg += "\\cmd list				(to list all users in the room)\n"
+	msg += "\\cmd change			(to change the room)\n"
+	fmt.Printf(msg)
+}
+
+func setTimeout(readErr error) {
+	timeoutTime := time.Now().Add(time.Minute * 5)
+	if err := theUser.Connection.SetReadDeadline(timeoutTime); err != nil {
+		fmt.Printf("Timeout..\n")
 	}
-	theUser.Name = userName
+	if readErr != nil {
+		if netErr, ok := readErr.(net.Error); ok && netErr.Timeout() {
+			fmt.Printf("Timeout\n")
+		} else {
+			panic(readErr)
+		}
+	}
 }
 
 func main() {
-	connect()
-	theUser.SendListRooms()
+	theUser.Connect()
+	defer theUser.Connection.Close()
 	buffer := make([]byte, 4096)
+
+	theUser.SetUserName()
+
+	theUser.SendListRooms()
 	roomsMsgLen, err := theUser.Connection.Read(buffer)
 	if err != nil {
 		fmt.Printf("Error getting rooms: %v", err.Error())
 		panic(err)
 	}
 
-	setUserName()
+	fmt.Printf("Welcome to Woki!\nAvaliable rooms: %v\n", string(buffer[:roomsMsgLen]))
 
-	fmt.Printf("Avaliable rooms: %v\n", string(buffer[:roomsMsgLen]))
-
-	fmt.Printf("Input room command: list/create/join\ne.g. join Main Loby\n")
-	reader := bufio.NewReader(os.Stdin)
-	cmd, err := reader.ReadString('\n')
-	if err != nil {
-		panic("Invalid input")
-	}
-	handleCommand(cmd)
 	for {
-		buffer = make([]byte, 4096)
+		buffer = make([]byte, 4096) // TODO: don't create in every iteration
+		if currentRoom != "" {
+			fmt.Printf("You are in room: %v", currentRoom)
+			showInRoomCommands()
+		} else {
+			showOutOfRoomCommands()
+		}
+		reader := bufio.NewReader(os.Stdin)
+		cmd, err := reader.ReadString('\n')
+		if err != nil {
+			panic("Invalid input")
+		}
+		handleCommands(cmd)
 		n, readErr := theUser.Connection.Read(buffer)
-		timeoutTime := time.Now().Add(time.Minute * 5)
-		if err := theUser.Connection.SetReadDeadline(timeoutTime); err != nil {
-			fmt.Printf("Timeout")
-			break
-		}
-		if readErr != nil {
-			if netErr, ok := readErr.(net.Error); ok && netErr.Timeout() {
-				fmt.Printf("Timeout\n")
-				break
-			} else {
-				panic(readErr)
-			}
-		}
+		setTimeout(readErr)
 		msg := string(buffer[:n])
-		fmt.Printf("Read %d bytes\nMessage: %v\n", n, msg)
+		fmt.Printf("%v\n", msg)
+
+		// TODO: move things to handleResponse()
+		if strings.HasPrefix(msg, "Joined: ") {
+			currentRoom = strings.Split(msg[:n], "Joined: ")[1]
+			fmt.Printf("Changed current room to: %v", currentRoom)
+		}
 	}
-	defer theUser.Connection.Close()
 }

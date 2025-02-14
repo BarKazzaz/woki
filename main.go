@@ -48,18 +48,18 @@ func parse(requestBody []byte, conn net.Conn) {
 
 	switch command {
 	case 'C':
-		conn.Write([]byte("Creating room " + arg + "\n"))
 		err := theChat.CreateRoom(arg)
 		if err != nil {
 			conn.Write([]byte("Error:" + err.Error() + "\n"))
 		}
+		conn.Write([]byte("Room created: " + arg + "\n"))
 	case 'J':
 		fmt.Printf("Trying to join " + name + " to room: " + arg + "\n")
-		conn.Write([]byte("Joining room " + arg + "\n"))
 		err := theChat.JoinRoom(arg, user)
 		if err != nil {
 			conn.Write([]byte("Error:" + err.Error() + "\n"))
 		}
+		conn.Write([]byte("Joined: " + arg + "\n"))
 	case 'M':
 		err := theChat.SendMessage(user, arg)
 		if err != nil {
@@ -94,7 +94,7 @@ func main() {
 	}
 	defer listener.Close()
 	fmt.Println("Serving", listener.Addr().Network(), listener.Addr().String())
-	mainRoomName := "Main Lobby"
+	mainRoomName := "Lobby"
 	if !theChat.HasRoom(mainRoomName) {
 		theChat.CreateRoom(mainRoomName)
 	}
