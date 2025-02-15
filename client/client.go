@@ -13,28 +13,35 @@ import (
 var theUser = user.User{}
 var currentRoom string
 
-func handleCommands(cmd string) {
+func handleUserInput() {
+	reader := bufio.NewReader(os.Stdin)
+	userInput, err := reader.ReadString('\n')
+	if err != nil {
+		panic("Invalid input")
+	}
+	userInput = strings.Split(userInput, "\n")[0]
+
 	insideARoom := currentRoom != ""
-	split := strings.Split(cmd, " ")
+	split := strings.Split(userInput, " ")
 	var command, rest string
-	if insideARoom {
-		if strings.HasPrefix(cmd, "\\cmd ") {
-			if len(split) < 2 {
-				fmt.Printf("Invalid input: %v", cmd)
-				return
-			}
-			command = split[1]
-			rest = strings.Join(split[2:], " ")
-		} else {
-			command = "message"
-			rest = cmd
-		}
-		handleInRoomCommands(command, rest)
+	if !insideARoom {
+		command = split[0]
+		rest = strings.Join(split[1:], " ")
+		handleOutOfRoomCommands(split[0], rest)
 		return
 	}
-	command = split[0]
-	rest = strings.Join(split[1:], " ")
-	handleOutOfRoomCommands(split[0], rest)
+
+	command = "message"
+	rest = userInput
+	if strings.HasPrefix(userInput, "\\cmd ") {
+		if len(split) < 2 {
+			fmt.Printf("Invalid input: %v", userInput)
+			return
+		}
+		command = split[1]
+		rest = strings.Join(split[2:], " ")
+	}
+	handleInRoomCommands(command, rest)
 }
 
 func handleOutOfRoomCommands(command, rest string) {
@@ -54,7 +61,6 @@ func handleInRoomCommands(command, rest string) {
 	fmt.Printf("command: %v, rest: %v\n", command, rest)
 	switch command {
 	case "list":
-		fmt.Printf("asking for list of users...\n")
 		theUser.SendListUsers(currentRoom)
 	case "change":
 		theUser.SendJoin(rest)
@@ -106,26 +112,20 @@ func main() {
 
 	fmt.Printf("Welcome to Woki!\nAvaliable rooms: %v\n", string(buffer[:roomsMsgLen]))
 
+	buffer = make([]byte, 4096)
 	for {
-		buffer = make([]byte, 4096) // TODO: don't create in every iteration
 		if currentRoom != "" {
 			fmt.Printf("You are in room: %v", currentRoom)
 			showInRoomCommands()
 		} else {
 			showOutOfRoomCommands()
 		}
-		reader := bufio.NewReader(os.Stdin)
-		cmd, err := reader.ReadString('\n')
-		if err != nil {
-			panic("Invalid input")
-		}
-		handleCommands(cmd)
+		go handleUserInput()
 		n, readErr := theUser.Connection.Read(buffer)
 		setTimeout(readErr)
 		msg := string(buffer[:n])
 		fmt.Printf("%v\n", msg)
 
-		// TODO: move things to handleResponse()
 		if strings.HasPrefix(msg, "Joined: ") {
 			currentRoom = strings.Split(msg[:n], "Joined: ")[1]
 			fmt.Printf("Changed current room to: %v", currentRoom)

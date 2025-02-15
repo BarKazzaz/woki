@@ -24,7 +24,6 @@ func parse(requestBody []byte, conn net.Conn) {
 	fmt.Printf("line: %v (%v)\n", line, len(line))
 	if line == "getRooms" {
 		rooms := theChat.GetRoomsList()
-		fmt.Printf("getRooms: %v\n", rooms)
 		s := "[" + strings.Join(rooms, ",") + "]\n"
 		conn.Write([]byte(s))
 		return
@@ -54,10 +53,10 @@ func parse(requestBody []byte, conn net.Conn) {
 		}
 		conn.Write([]byte("Room created: " + arg + "\n"))
 	case 'J':
-		fmt.Printf("Trying to join " + name + " to room: " + arg + "\n")
 		err := theChat.JoinRoom(arg, user)
 		if err != nil {
 			conn.Write([]byte("Error:" + err.Error() + "\n"))
+			return
 		}
 		conn.Write([]byte("Joined: " + arg + "\n"))
 	case 'M':

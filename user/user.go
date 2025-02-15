@@ -8,6 +8,7 @@ import (
 
 type User struct {
 	Name       string
+	Room       string
 	Connection net.Conn
 }
 
@@ -58,5 +59,5 @@ func (user *User) SendMessage(roomName, rest string) {
 
 func (user *User) SendListUsers(roomName string) {
 	// TODO: implement
-	fmt.Printf("Cannot send list of users yet...")
+	fmt.Printf("Cannot send list of users yet...\n")
 }
