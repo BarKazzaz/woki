@@ -54,6 +54,7 @@ func (user *User) SetUserName() {
 func (user *User) SendMessage(roomName, rest string) {
 	msg := strconv.Itoa(len(user.Name))
 	msg += user.Name + "M" + roomName + rest
+	fmt.Printf("user.go:SendMessage(%v)\n", msg)
 	user.Connection.Write([]byte(msg))
 }
 

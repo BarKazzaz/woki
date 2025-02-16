@@ -50,8 +50,7 @@ func handleOutOfRoomCommands(command, rest string) {
 	case "list":
 		theUser.SendListRooms()
 	case "join":
-		currentRoom = rest
-		theUser.SendJoin(currentRoom)
+		theUser.SendJoin(rest)
 	case "create":
 		theUser.SendCreateRoom(rest)
 	}
@@ -70,16 +69,16 @@ func handleInRoomCommands(command, rest string) {
 }
 
 func showOutOfRoomCommands() {
-	fmt.Printf("Commands: list/create/join\ne.g. join Main Loby\nOR\ncreate Led Zepplin Fans\n")
+	// fmt.Printf("Commands: list/create/join\ne.g. join Main Loby\nOR\ncreate Led Zepplin Fans\n")
 }
 
 func showInRoomCommands() {
-	msg := "Type to send messages\n"
-	msg += "Commands:					change,list\n"
-	msg += "Hello							(to send 'Hello' to other chatters)\n"
-	msg += "\\cmd list				(to list all users in the room)\n"
-	msg += "\\cmd change			(to change the room)\n"
-	fmt.Printf(msg)
+	// msg := "Type to send messages\n"
+	// msg += "Commands:	change,list\n"
+	// msg += "Hello	(to send 'Hello' to other chatters)\n"
+	// msg += "\\cmd list	(to list all users in the room)\n"
+	// msg += "\\cmd change	(to change the room)\n"
+	// fmt.Printf(msg)
 }
 
 func setTimeout(readErr error) {
@@ -115,7 +114,7 @@ func main() {
 	buffer = make([]byte, 4096)
 	for {
 		if currentRoom != "" {
-			fmt.Printf("You are in room: %v", currentRoom)
+			fmt.Printf("You are in room: %v\n", currentRoom)
 			showInRoomCommands()
 		} else {
 			showOutOfRoomCommands()
@@ -128,6 +127,7 @@ func main() {
 
 		if strings.HasPrefix(msg, "Joined: ") {
 			currentRoom = strings.Split(msg[:n], "Joined: ")[1]
+			currentRoom = strings.Split(currentRoom, "\n")[0]
 			fmt.Printf("Changed current room to: %v", currentRoom)
 		}
 	}

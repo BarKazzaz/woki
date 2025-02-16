@@ -19,8 +19,8 @@ func NewChatRoom() ChatRoom {
 	return c
 }
 
-func (room ChatRoom) Join(user user.User) {
-	room.Chatters = append(room.Chatters, &user)
+func (room ChatRoom) Join(user *user.User) {
+	room.Chatters = append(room.Chatters, user)
 }
 
 type Chat struct {
@@ -56,7 +56,7 @@ func (chat Chat) GetRoomsList() []string {
 	return rooms
 }
 
-func (chat *Chat) JoinRoom(roomName string, user user.User) error {
+func (chat *Chat) JoinRoom(roomName string, user *user.User) error {
 	room, exists := chat.Rooms[roomName]
 	if !exists {
 		rooms := chat.GetRoomsList()
@@ -69,29 +69,35 @@ func (chat *Chat) JoinRoom(roomName string, user user.User) error {
 	return nil
 }
 
-func (chat *Chat) SendMessage(user user.User, roomNameAndMessage string) error {
+func (chat *Chat) SendMessage(user *user.User, roomNameAndMessage string) error {
 	roomNameAndMessageS := string(roomNameAndMessage)
 	for roomName := range chat.Rooms {
 		if strings.HasPrefix(roomNameAndMessageS, roomName) {
-			msg := roomNameAndMessage[len(roomName):]
+			msg := string(roomNameAndMessage[len(roomName):][:])
+			fmt.Printf("%v %v\n", len(msg), msg)
 			chat.sendMessage(user, roomName, []byte(msg))
 		}
 	}
 	return nil
 }
 
-func (chat *Chat) sendMessage(user user.User, roomName string, message []byte) error {
+func (chat *Chat) sendMessage(user *user.User, roomName string, message []byte) error {
 	room, exists := chat.Rooms[roomName]
 	if !exists {
 		return errors.New("Room " + roomName + " does not exist")
 	}
 	i := 0
+	msg := string(message[:])
+	fmt.Printf("%v: %v\n", len(room.Chatters), msg)
 	for i < len(room.Chatters) {
 		chatter := room.Chatters[i]
+		if chatter == nil {
+			break
+		}
 		if chatter.Name == user.Name {
 			continue
 		}
-		chatter.Connection.Write(message)
+		chatter.Connection.Write([]byte(msg))
 		i++
 	}
 	return nil

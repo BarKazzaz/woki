@@ -53,17 +53,18 @@ func parse(requestBody []byte, conn net.Conn) {
 		}
 		conn.Write([]byte("Room created: " + arg + "\n"))
 	case 'J':
-		err := theChat.JoinRoom(arg, user)
+		err := theChat.JoinRoom(arg, &user)
 		if err != nil {
 			conn.Write([]byte("Error:" + err.Error() + "\n"))
 			return
 		}
 		conn.Write([]byte("Joined: " + arg + "\n"))
 	case 'M':
-		err := theChat.SendMessage(user, arg)
+		err := theChat.SendMessage(&user, arg)
 		if err != nil {
 			conn.Write([]byte("Error:" + err.Error() + "\n"))
 		}
+		conn.Write([]byte("\n"))
 	default:
 		conn.Write([]byte("Unknown command:" + string(command) + "\n"))
 	}
@@ -93,7 +94,7 @@ func main() {
 	}
 	defer listener.Close()
 	fmt.Println("Serving", listener.Addr().Network(), listener.Addr().String())
-	mainRoomName := "Lobby"
+	mainRoomName := "led"
 	if !theChat.HasRoom(mainRoomName) {
 		theChat.CreateRoom(mainRoomName)
 	}
