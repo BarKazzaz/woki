@@ -14,13 +14,14 @@ type ChatRoom struct {
 
 func NewChatRoom() ChatRoom {
 	c := ChatRoom{
-		make([]*user.User, 2),
+		make([]*user.User, 0),
 	}
 	return c
 }
 
-func (room ChatRoom) Join(user *user.User) {
+func (room *ChatRoom) Join(user *user.User) {
 	room.Chatters = append(room.Chatters, user)
+	fmt.Printf("%v", room)
 }
 
 type Chat struct {
@@ -88,17 +89,19 @@ func (chat *Chat) sendMessage(user *user.User, roomName string, message []byte) 
 	}
 	i := 0
 	msg := string(message[:])
-	fmt.Printf("%v: %v\n", len(room.Chatters), msg)
+	fmt.Printf("Sending to room: %v\n", room)
 	for i < len(room.Chatters) {
 		chatter := room.Chatters[i]
+		i++
 		if chatter == nil {
-			break
-		}
-		if chatter.Name == user.Name {
 			continue
 		}
+		if chatter.Name == user.Name {
+			fmt.Printf("Skipping: %v\n", chatter.Name)
+			continue
+		}
+		fmt.Printf("Sending: %v\n", msg)
 		chatter.Connection.Write([]byte(msg))
-		i++
 	}
 	return nil
 }
