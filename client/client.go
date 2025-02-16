@@ -114,7 +114,6 @@ func main() {
 	buffer = make([]byte, 4096)
 	for {
 		if currentRoom != "" {
-			fmt.Printf("You are in room: %v\n", currentRoom)
 			showInRoomCommands()
 		} else {
 			showOutOfRoomCommands()
@@ -128,7 +127,8 @@ func main() {
 		if strings.HasPrefix(msg, "Joined: ") {
 			currentRoom = strings.Split(msg[:n], "Joined: ")[1]
 			currentRoom = strings.Split(currentRoom, "\n")[0]
-			fmt.Printf("Changed current room to: %v", currentRoom)
+			fmt.Printf("Changed current room to: %v\n", currentRoom)
+			fmt.Printf("You are in room: %v\n", currentRoom)
 		}
 	}
 }
