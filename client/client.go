@@ -45,7 +45,6 @@ func handleUserInput() {
 }
 
 func handleOutOfRoomCommands(command, rest string) {
-	fmt.Printf("command: %v, rest: %v\n", command, rest)
 	switch command {
 	case "list":
 		theUser.SendListRooms()
@@ -57,7 +56,6 @@ func handleOutOfRoomCommands(command, rest string) {
 }
 
 func handleInRoomCommands(command, rest string) {
-	fmt.Printf("command: %v, rest: %v\n", command, rest)
 	switch command {
 	case "list":
 		theUser.SendListUsers(currentRoom)
@@ -122,7 +120,9 @@ func main() {
 		n, readErr := theUser.Connection.Read(buffer)
 		setTimeout(readErr)
 		msg := string(buffer[:n])
-		fmt.Printf("%v\n", msg)
+		if len(msg) > 1 {
+			fmt.Printf("%v\n", msg)
+		}
 
 		if strings.HasPrefix(msg, "Joined: ") {
 			currentRoom = strings.Split(msg[:n], "Joined: ")[1]

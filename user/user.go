@@ -13,7 +13,9 @@ type User struct {
 }
 
 func (user *User) SendListRooms() {
-	user.Connection.Write([]byte("getRooms\n"))
+	n := len(user.Name)
+	msg := strconv.Itoa(n) + user.Name + "R\n"
+	user.Connection.Write([]byte(msg))
 }
 
 func (user *User) SendJoin(roomName string) {
@@ -54,11 +56,11 @@ func (user *User) SetUserName() {
 func (user *User) SendMessage(roomName, rest string) {
 	msg := strconv.Itoa(len(user.Name))
 	msg += user.Name + "M" + roomName + rest
-	fmt.Printf("user.go:SendMessage(%v)\n", msg)
 	user.Connection.Write([]byte(msg))
 }
 
 func (user *User) SendListUsers(roomName string) {
-	// TODO: implement
-	fmt.Printf("Cannot send list of users yet...\n")
+	n := len(user.Name)
+	msg := strconv.Itoa(n) + user.Name + "U" + roomName + "\n"
+	user.Connection.Write([]byte(msg))
 }

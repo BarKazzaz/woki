@@ -101,7 +101,7 @@ func (chat *Chat) sendMessage(user *user.User, roomName string, message []byte) 
 			continue
 		}
 		fmt.Printf("Sending: %v\n", msg)
-		chatter.Connection.Write([]byte(msg))
+		chatter.Connection.Write([]byte(user.Name + ": " + msg))
 	}
 	return nil
 }

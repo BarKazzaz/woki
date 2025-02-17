@@ -20,14 +20,6 @@ func parse(requestBody []byte, conn net.Conn) {
 		}
 		trailingNewLineIndex++
 	}
-	line := string(requestBody[:trailingNewLineIndex])
-	fmt.Printf("line: %v (%v)\n", line, len(line))
-	if line == "getRooms" {
-		rooms := theChat.GetRoomsList()
-		s := "[" + strings.Join(rooms, ",") + "]\n"
-		conn.Write([]byte(s))
-		return
-	}
 	// TODO: support names > 9 ([0] means only 1 char unless we go the hexa way of numbering)
 	var nameLength int = int(requestBody[0] - byte('0'))
 	if nameLength < 3 {
@@ -65,6 +57,20 @@ func parse(requestBody []byte, conn net.Conn) {
 			conn.Write([]byte("Error:" + err.Error() + "\n"))
 		}
 		conn.Write([]byte("\n"))
+	case 'R':
+		rooms := theChat.GetRoomsList()
+		s := "[" + strings.Join(rooms, ",") + "]\n"
+		conn.Write([]byte(s))
+	case 'U':
+		var users []string
+		for _, u := range theChat.Rooms[arg].Chatters {
+			if u == nil {
+				continue
+			}
+			users = append(users, u.Name)
+		}
+		s := "[" + strings.Join(users, ",") + "]\n"
+		conn.Write([]byte(s))
 	default:
 		conn.Write([]byte("Unknown command:" + string(command) + "\n"))
 	}
