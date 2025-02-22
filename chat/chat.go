@@ -3,6 +3,7 @@ package chat
 import (
 	"errors"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"woki/user"
@@ -104,4 +105,38 @@ func (chat *Chat) sendMessage(user *user.User, roomName string, message []byte) 
 		chatter.Connection.Write([]byte(user.Name + ": " + msg))
 	}
 	return nil
+}
+
+func (chat *Chat) HasUser(userName string) bool {
+	for room := range chat.Rooms {
+		users := chat.Rooms[room].Chatters
+		for j := 0; j < len(users); j++ {
+			if userName == users[j].Name {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (chat *Chat) RemoveUser(connection net.Conn) {
+	fmt.Printf("Searching for user to remove...\n")
+	for room := range chat.Rooms {
+		users := chat.Rooms[room].Chatters
+		fmt.Printf("Users (room): %v (%v)\n", users, room)
+		for j := 0; j < len(users); j++ {
+			if connection == users[j].Connection {
+				fmt.Printf("Found user to remove\n")
+				newUsers := make([]*user.User, 0)
+				if j+1 == len(users) {
+					newUsers = append(newUsers, users[:j]...)
+				} else {
+					newUsers = append(users[:j], users[j+1:]...)
+				}
+				chat.Rooms[room].Chatters = newUsers
+				fmt.Printf("after removal: %v\n", newUsers)
+				fmt.Printf("after removal: %v\n", chat.Rooms[room].Chatters)
+			}
+		}
+	}
 }

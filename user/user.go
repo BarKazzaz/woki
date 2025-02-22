@@ -50,7 +50,8 @@ func (user *User) SetUserName() {
 		fmt.Printf("Error getting name: %v", err.Error())
 		panic(err)
 	}
-	user.Name = userName
+	msg := strconv.Itoa(len(userName)) + userName + "S\n"
+	user.Connection.Write([]byte(msg))
 }
 
 func (user *User) SendMessage(roomName, rest string) {

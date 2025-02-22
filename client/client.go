@@ -14,6 +14,10 @@ var theUser = user.User{}
 var currentRoom string
 
 func handleUserInput() {
+	if len(theUser.Name) == 0 {
+		theUser.SetUserName()
+		return
+	}
 	reader := bufio.NewReader(os.Stdin)
 	userInput, err := reader.ReadString('\n')
 	if err != nil {
@@ -94,29 +98,21 @@ func setTimeout(readErr error) {
 }
 
 func main() {
+	fmt.Printf("Welcome to Woki!\n")
 	theUser.Connect()
 	defer theUser.Connection.Close()
+
 	buffer := make([]byte, 4096)
-
-	theUser.SetUserName()
-
-	theUser.SendListRooms()
-	roomsMsgLen, err := theUser.Connection.Read(buffer)
-	if err != nil {
-		fmt.Printf("Error getting rooms: %v", err.Error())
-		panic(err)
-	}
-
-	fmt.Printf("Welcome to Woki!\nAvaliable rooms: %v\n", string(buffer[:roomsMsgLen]))
-
-	buffer = make([]byte, 4096)
 	for {
+
 		if currentRoom != "" {
 			showInRoomCommands()
 		} else {
 			showOutOfRoomCommands()
 		}
+
 		go handleUserInput()
+
 		n, readErr := theUser.Connection.Read(buffer)
 		setTimeout(readErr)
 		msg := string(buffer[:n])
@@ -124,11 +120,23 @@ func main() {
 			fmt.Printf("%v\n", msg)
 		}
 
+		prefix := "Error: "
+		if strings.HasPrefix(msg, prefix) {
+			continue
+		}
+
 		if strings.HasPrefix(msg, "Joined: ") {
 			currentRoom = strings.Split(msg[:n], "Joined: ")[1]
 			currentRoom = strings.Split(currentRoom, "\n")[0]
-			fmt.Printf("Changed current room to: %v\n", currentRoom)
 			fmt.Printf("You are in room: %v\n", currentRoom)
+		}
+
+		prefix = "User created: "
+		if strings.HasPrefix(msg, prefix) {
+			userName := strings.Split(msg[:n], prefix)[1]
+			userName = strings.Split(userName, "\n")[0]
+			theUser.Name = userName
+			fmt.Printf("Changed name to: %v\n", userName)
 		}
 	}
 }

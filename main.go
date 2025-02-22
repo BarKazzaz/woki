@@ -38,10 +38,29 @@ func parse(requestBody []byte, conn net.Conn) {
 	user.Connection = conn
 
 	switch command {
+	case 'S':
+		nameExists := theChat.HasUser(name)
+		if nameExists {
+			conn.Write([]byte("Error: name is already taken\n"))
+			return
+		}
+		conn.Write([]byte("User created: " + name + "\n"))
+		var defaultRoom string
+		for name := range theChat.Rooms {
+			defaultRoom = name
+			break
+		}
+		err := theChat.JoinRoom(defaultRoom, &user)
+		if err != nil {
+			conn.Write([]byte("Error:" + err.Error() + "\n"))
+			return
+		}
+		conn.Write([]byte("Joined: " + defaultRoom + "\n"))
 	case 'C':
 		err := theChat.CreateRoom(arg)
 		if err != nil {
 			conn.Write([]byte("Error:" + err.Error() + "\n"))
+			return
 		}
 		conn.Write([]byte("Room created: " + arg + "\n"))
 	case 'J':
@@ -55,6 +74,7 @@ func parse(requestBody []byte, conn net.Conn) {
 		err := theChat.SendMessage(&user, arg)
 		if err != nil {
 			conn.Write([]byte("Error:" + err.Error() + "\n"))
+			return
 		}
 		conn.Write([]byte("\n"))
 	case 'R':
@@ -86,6 +106,7 @@ func handleConnetion(connection net.Conn) {
 				panic(err)
 			}
 			fmt.Println("EOF")
+			theChat.RemoveUser(connection)
 			break
 		}
 		fmt.Println("Read len bytes:", i)
