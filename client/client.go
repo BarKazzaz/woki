@@ -25,6 +25,11 @@ func handleUserInput() {
 	}
 	userInput = strings.Split(userInput, "\n")[0]
 
+	if userInput == "\\cmd help" {
+		showInRoomCommands()
+		return
+	}
+
 	insideARoom := currentRoom != ""
 	split := strings.Split(userInput, " ")
 	var command, rest string
@@ -43,6 +48,12 @@ func handleUserInput() {
 			return
 		}
 		command = split[1]
+		if command == "room" {
+			command = split[2]
+			rest = strings.Join(split[3:], " ")
+			handleOutOfRoomCommands(command, rest)
+			return
+		}
 		rest = strings.Join(split[2:], " ")
 	}
 	handleInRoomCommands(command, rest)
@@ -70,17 +81,15 @@ func handleInRoomCommands(command, rest string) {
 	}
 }
 
-func showOutOfRoomCommands() {
-	// fmt.Printf("Commands: list/create/join\ne.g. join Main Loby\nOR\ncreate Led Zepplin Fans\n")
-}
-
 func showInRoomCommands() {
-	// msg := "Type to send messages\n"
-	// msg += "Commands:	change,list\n"
-	// msg += "Hello	(to send 'Hello' to other chatters)\n"
-	// msg += "\\cmd list	(to list all users in the room)\n"
-	// msg += "\\cmd change	(to change the room)\n"
-	// fmt.Printf(msg)
+	msg := "Type to send messages\n"
+	msg += "\\cmd list\t\t\t(to list all users in the room)\n"
+	msg += "\\cmd change\t\t\t(to change the room)\n"
+	msg += "\\cmd room list\t\t\t(to list all rooms)\n"
+	msg += "\\cmd room create\t\t(to create a new room)\n"
+	msg += "\\cmd room join\t\t\t(to join a room - same as \\cmd change)\n"
+	msg += "\\cmd help\t\t\t(to show this help message)\n"
+	fmt.Printf(msg)
 }
 
 func setTimeout(readErr error) {
@@ -99,18 +108,12 @@ func setTimeout(readErr error) {
 
 func main() {
 	fmt.Printf("Welcome to Woki!\n")
+	fmt.Printf("Type '\\cmd help' to see possible commands\n")
 	theUser.Connect()
 	defer theUser.Connection.Close()
 
 	buffer := make([]byte, 4096)
 	for {
-
-		if currentRoom != "" {
-			showInRoomCommands()
-		} else {
-			showOutOfRoomCommands()
-		}
-
 		go handleUserInput()
 
 		n, readErr := theUser.Connection.Read(buffer)
